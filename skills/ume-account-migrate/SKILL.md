@@ -61,6 +61,12 @@ Say, in your own words and in plain language:
   2. **As UME Migration.** It renames your account.
   3. **As your new name**, with your usual password. It checks everything and removes
      the helper account.
+- How to do the desktop steps (tell them when they reach each one):
+  - **Open Terminal:** Mac: Cmd+Space, type *Terminal*, Enter. Linux (Ubuntu/GNOME):
+    Ctrl+Alt+T.
+  - **Log out:** Mac: Apple menu → Log Out. Linux: top-right menu → Power → Log Out.
+  - **Never** use *Switch User* or *Lock* instead of logging out, and on a Mac never restart.
+  - The first login to *UME Migration* may show welcome/setup screens: skip them all.
 
 Ask: "Ready to start?" Only then give the command.
 
@@ -74,7 +80,8 @@ f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-d
 
 Tell them to **save this command somewhere they can reach after logging out**
 (for example a note on their phone, or this chat on their phone), because they need it
-in all 3 runs.
+in all 3 runs. It is also always on the public page
+https://github.com/ScudraServicos/ume-device-setup (no login needed).
 
 What they will see:
 - A question for their email, then a check.
@@ -96,6 +103,7 @@ opening the assistant again) and say which run they are on.
 | Forgot the UME Migration password (after run 1) | Log in to their own account (not changed yet) and paste the command with ` --cancel` at the end. Then start again. |
 | New name is not on the login screen | Login screens often show the full name; pick that or type the new name. Password is the usual one. |
 | "already exists" | Another account with the standard name exists. Contact the InfraSec team. Do not try to fix it. |
+| "still logged in (maybe with 'Switch User')" | They switched users instead of logging out. Go back to that account, log out, log in again as the account the box names, paste the command. |
 | "Run 1 is already done" / "Run 2 is already done" | They are in the wrong account for this step. Follow the box: log out and log in as the account it names. |
 | Any other red `[X]` message | Nothing else was changed. Contact the InfraSec team and share the message. The full record is in `/var/log/ume-account-migrate/`. |
 

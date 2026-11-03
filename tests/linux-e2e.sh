@@ -61,6 +61,7 @@ pass "--check is read-only"
 echo "### run 1 as jsilva"
 drive jsilva Old-pass-123 || fail "run 1 exit code"
 id ume-migrate >/dev/null || fail "helper not created"
+[[ "$(cat /home/ume-migrate/.config/gnome-initial-setup-done)" == yes ]] || fail "GNOME welcome wizard not skipped for helper"
 grep -q '^PHASE=1$' /var/lib/ume-account-migrate/state || fail "state not phase 1"
 pass "run 1"
 

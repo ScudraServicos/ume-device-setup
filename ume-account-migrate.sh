@@ -174,6 +174,51 @@ is_admin() {
   fi
 }
 
+# True if the user still has a real login (desktop or terminal), as opposed to
+# leftovers after logout. Desktop logins (GNOME/Wayland) are often missing from
+# `who` or listed by numeric UID, so on Linux ask systemd-logind first.
+is_logged_in() {
+  local u="$1" uid s cls st
+  uid="$(id -u "${u}" 2>/dev/null)" || return 1
+  if [[ "${OS}" == "Linux" ]] && command -v loginctl >/dev/null 2>&1 \
+     && loginctl show-user "${u}" >/dev/null 2>&1; then
+    for s in $(loginctl show-user "${u}" -p Sessions --value 2>/dev/null); do
+      cls="$(loginctl show-session "${s}" -p Class --value 2>/dev/null)"
+      st="$(loginctl show-session "${s}" -p State --value 2>/dev/null)"
+      # "user" = a desktop or terminal login; "manager" = background service
+      # manager (kept alive by linger), not a login.
+      if [[ "${cls}" == "user" && ( "${st}" == "active" || "${st}" == "online" ) ]]; then return 0; fi
+    done
+    return 1
+  fi
+  who | awk '{print $1}' | grep -qxE "${u}|${uid}"
+}
+
+# Stop everything still running as a user (after they logged out).
+end_user_processes() {
+  local u="$1"
+  if [[ "${OS}" == "Linux" ]] && command -v loginctl >/dev/null 2>&1; then
+    log "RUN: loginctl terminate-user ${u}"
+    loginctl terminate-user "${u}" >> "${LOGFILE}" 2>&1 || true
+    sleep 2
+  fi
+  log "RUN: pkill -TERM/-KILL -u ${u}"
+  pkill -TERM -u "${u}" 2>/dev/null || true
+  sleep 3
+  pkill -KILL -u "${u}" 2>/dev/null || true
+  sleep 2
+}
+
+# How to log out / open Terminal, per OS (shown in the WHAT TO DO NOW boxes).
+if [[ "${OS}" == "Darwin" ]]; then
+  HOW_LOGOUT="Apple menu (top-left) > Log Out. Do NOT restart, do NOT use 'switch user'."
+  HOW_TERMINAL="Press Cmd+Space, type Terminal, press Enter."
+else
+  HOW_LOGOUT="Top-right menu > Power > Log Out (not Lock, not 'Switch User')."
+  HOW_TERMINAL="Press Ctrl+Alt+T (or open the app list and search Terminal)."
+fi
+FIND_AGAIN="Lost the command? It is on https://github.com/ScudraServicos/ume-device-setup"
+
 # Re-run this same script with admin rights (one password prompt).
 ensure_root() {
   [[ "${EUID}" -eq 0 ]] && return 0
@@ -316,6 +361,10 @@ create_temp_admin_linux() {
   [[ -n "${grp}" ]] || die "Could not find the admin group (sudo/wheel) on this computer."
   run useradd -m -s /bin/bash -c "${TEMP_ADMIN_FULLNAME}" -G "${grp}" "${TEMP_ADMIN}"
   undo_note "userdel -r ${TEMP_ADMIN}"
+  # Skip the GNOME "Welcome" wizard on the helper's first desktop login.
+  install -d -o "${TEMP_ADMIN}" -g "$(id -gn "${TEMP_ADMIN}")" -m 0700 "/home/${TEMP_ADMIN}/.config"
+  printf 'yes' > "/home/${TEMP_ADMIN}/.config/gnome-initial-setup-done"
+  chown "${TEMP_ADMIN}:$(id -gn "${TEMP_ADMIN}")" "/home/${TEMP_ADMIN}/.config/gnome-initial-setup-done"
   say "Choose a password for the temporary '${TEMP_ADMIN_FULLNAME}' account (you only need it today):"
   local attempt
   for attempt in 1 2 3; do
@@ -372,14 +421,14 @@ run1() {
   save_state
   log "state saved: run 1 complete old=${S_OLD_USER} new=${S_NEW_USER}"
 
-  local restart_note=""
-  [[ "${OS}" == "Darwin" ]] && restart_note=" Do NOT restart."
   next_box "1. Save your work and close your apps." \
-           "2. Log out (not lock, not switch user).${restart_note}" \
+           "2. Log out: ${HOW_LOGOUT}" \
            "3. On the login screen choose '${TEMP_ADMIN_FULLNAME}' and use the password you just chose." \
            "   (Linux: if it is not listed, click 'Not listed?' and type ${TEMP_ADMIN})" \
-           "4. Open the Terminal app there." \
+           "   If welcome/setup screens appear, skip them all (Skip / Set Up Later)." \
+           "4. Open Terminal: ${HOW_TERMINAL}" \
            "${SAME_CMD_1}" "${SAME_CMD_2}" \
+           "   ${FIND_AGAIN}" \
            "" \
            "Changed your mind? Paste the command with ' --cancel' at the end, here, now."
 }
@@ -407,11 +456,7 @@ stop_user_processes() {
   if pgrep -u "${u}" >/dev/null 2>&1; then
     warn "Some programs of '${u}' are still running in the background."
     confirm_yes "They will be closed now (unsaved work in them is lost)." || die "Stopped. Log out of '${u}' fully and try again."
-    log "RUN: pkill -TERM -u ${u}"
-    pkill -TERM -u "${u}" 2>/dev/null || true
-    sleep 3
-    pkill -KILL -u "${u}" 2>/dev/null || true
-    sleep 2
+    end_user_processes "${u}"
     if pgrep -u "${u}" >/dev/null 2>&1; then
       die "Programs of '${u}' are still running and could not be closed."
     fi
@@ -509,8 +554,8 @@ run2() {
   user_exists "${old}" || die "The account '${old}' was not found."
   if [[ "${old}" != "${new}" ]] && user_exists "${new}"; then die "An account '${new}' already exists."; fi
   if [[ "${old_home}" != "${new_home}" && -e "${new_home}" ]]; then die "${new_home} already exists."; fi
-  if who | awk '{print $1}' | grep -qx "${old}"; then
-    die "'${old}' is still logged in. Log out of it completely (not lock, not switch user), then try again."
+  if is_logged_in "${old}"; then
+    die "'${old}' is still logged in (maybe with 'Switch User'). Go back to it, log out completely (${HOW_LOGOUT}), log in here again and paste the command."
   fi
   if ! confirm_yes "Rename now?"; then say "OK, nothing was changed."; exit 0; fi
   start_log run2
@@ -531,15 +576,14 @@ run2() {
   log "state saved: run 2 complete"
   ok "Your account is now '${new}'."
 
-  local restart_note=""
-  [[ "${OS}" == "Darwin" ]] && restart_note=" Do NOT restart."
-  next_box "1. Log out of '${TEMP_ADMIN_FULLNAME}'.${restart_note}" \
+  next_box "1. Log out of '${TEMP_ADMIN_FULLNAME}': ${HOW_LOGOUT}" \
            "2. Log in with your NEW name: ${new}" \
            "   Use the SAME password as always." \
            "   (Login screens often show your full name instead - pick that.)" \
            "   (Linux: if it is not listed, click 'Not listed?' and type ${new})" \
-           "3. Open the Terminal app." \
-           "${SAME_CMD_1}" "${SAME_CMD_2}"
+           "3. Open Terminal: ${HOW_TERMINAL}" \
+           "${SAME_CMD_1}" "${SAME_CMD_2}" \
+           "   ${FIND_AGAIN}"
 }
 
 # ---------------------------------------------------------------------------
@@ -578,8 +622,10 @@ run3() {
   fi
 
   if user_exists "${TEMP_ADMIN}" && [[ "${S_TEMP_CREATED}" == "1" ]]; then
-    pkill -KILL -u "${TEMP_ADMIN}" 2>/dev/null || true
-    sleep 1
+    if is_logged_in "${TEMP_ADMIN}"; then
+      die "'${TEMP_ADMIN_FULLNAME}' is still logged in (maybe with 'Switch User'). Log out of it, then paste the command again here."
+    fi
+    end_user_processes "${TEMP_ADMIN}"
     if [[ "${OS}" == "Darwin" ]]; then
       sysadminctl -deleteUser "${TEMP_ADMIN}" >> "${LOGFILE}" 2>&1 || true
     else
@@ -628,13 +674,15 @@ case "${S_PHASE}" in
   1)
     if [[ "${INVOKER}" == "${TEMP_ADMIN}" ]]; then ensure_root; run2
     else next_box "Run 1 is already done." \
-                  "Log out, log in as '${TEMP_ADMIN_FULLNAME}', open Terminal." \
+                  "Log out (${HOW_LOGOUT})," \
+                  "log in as '${TEMP_ADMIN_FULLNAME}', open Terminal (${HOW_TERMINAL})." \
                   "${SAME_CMD_1}" "${SAME_CMD_2}"
     fi ;;
   2)
     if [[ "${INVOKER}" == "${S_NEW_USER}" ]]; then ensure_root; run3
     else next_box "Run 2 is already done." \
-                  "Log out, log in as '${S_NEW_USER}' (same password as always), open Terminal." \
+                  "Log out (${HOW_LOGOUT})," \
+                  "log in as '${S_NEW_USER}' (same password as always), open Terminal." \
                   "${SAME_CMD_1}" "${SAME_CMD_2}"
     fi ;;
   *) die "Unexpected state in ${STATE_FILE}. Please contact your InfraSec team." ;;

@@ -35,11 +35,20 @@ login password.
    - **Does not match** → it explains what will happen and asks you to type `yes`.
 4. **Run 1** (your own account): the tool creates a temporary helper account,
    **UME Migration**, with a password you choose. Log out, then log in as *UME Migration*.
+   If welcome/setup screens appear, skip them all.
 5. **Run 2** (as UME Migration): open Terminal and paste **the same command**. It
    renames your account. Log out, then log in with your **new name** and your
    **usual password**.
 6. **Run 3** (as your new name): open Terminal and paste **the same command** one last
    time. It checks everything and removes the helper account.
+
+| | Mac | Linux (Ubuntu / GNOME) |
+|---|---|---|
+| Open Terminal | <kbd>Cmd</kbd>+<kbd>Space</kbd>, type *Terminal*, Enter | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> |
+| Log out | Apple menu → **Log Out** | Top-right menu → **Power** → **Log Out** |
+| Never | Restart, or **Switch User** | **Switch User** or Lock instead of logging out |
+
+Keep this page open on your phone: you need the command in each run.
 7. **Install JumpCloud** (the tool shows these steps too):
    1. Open the JumpCloud activation email from the company, follow it, and set your
       new password.
@@ -77,6 +86,7 @@ Add options at the end of the command, after `bash "$f"`.
 | Forgot the helper password after run 1 | Log in to your own account (unchanged so far) and run the command with `--cancel`. Then start again. |
 | Your new name is not on the login screen | Login screens often show your full name. Pick that, or type the new name. |
 | "already exists" | Another account with your standard name exists already. Contact your InfraSec team. |
+| "still logged in (maybe with 'Switch User')" | You switched users instead of logging out. Go back to that account, log out (menu above), log in again as the account the box names, paste the command. |
 | Anything else | Contact your InfraSec team. A full record is in `/var/log/ume-account-migrate/`. |
 
 ---
