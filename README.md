@@ -15,7 +15,7 @@ Copy this sentence and paste it into **Claude** (Desktop app, claude.ai or Claud
 or **Hermes**:
 
 ```text
-Read https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md and follow it step by step to prepare my computer for JumpCloud.
+Read https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/skills/ume-account-migrate/SKILL.md and follow it step by step to prepare my computer for JumpCloud.
 ```
 
 That's it. The assistant checks your computer, explains everything in plain language and
@@ -28,8 +28,8 @@ passwords: you only type those into Terminal.
 | Assistant | Install the skill once |
 |---|---|
 | Claude Desktop / claude.ai | Download [`ume-account-migrate-skill.zip`](https://github.com/ScudraServicos/ume-device-setup/releases/latest), then **Settings → Capabilities → Skills → Upload skill** and pick the zip. |
-| Claude Code | Paste in Terminal: `mkdir -p ~/.claude/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md -o ~/.claude/skills/ume-account-migrate/SKILL.md` |
-| Hermes Agent | Paste in Terminal: `mkdir -p ~/.hermes/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md -o ~/.hermes/skills/ume-account-migrate/SKILL.md` |
+| Claude Code | Paste in Terminal: `mkdir -p ~/.claude/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/skills/ume-account-migrate/SKILL.md -o ~/.claude/skills/ume-account-migrate/SKILL.md` |
+| Hermes Agent | Paste in Terminal: `mkdir -p ~/.hermes/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/skills/ume-account-migrate/SKILL.md -o ~/.hermes/skills/ume-account-migrate/SKILL.md` |
 
 No assistant? Follow the steps below yourself: it is the same flow.
 
@@ -53,7 +53,7 @@ login password.
 2. Open the **Terminal** app and paste this command, then press Enter:
 
    ```bash
-   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f"
+   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/ume-account-migrate.sh -o "$f" && bash "$f"
    ```
 
 3. Type your UME work email when asked. The tool checks your computer:
@@ -62,9 +62,9 @@ login password.
 4. **Run 1** (your own account): the tool creates a temporary helper account,
    **UME Migration**, with a password you choose. Log out, then log in as *UME Migration*.
    If welcome/setup screens appear, skip them all.
-5. **Run 2** (as UME Migration): open Terminal and paste **the same command**. It
-   renames your account. Log out, then log in with your **new name** and your
-   **usual password**.
+5. **Run 2** (as UME Migration): a Terminal window **opens by itself** and continues.
+   (If it does not, open Terminal and paste **the same command**.) It renames your
+   account. Log out, then log in with your **new name** and your **usual password**.
 6. **Run 3** (as your new name): open Terminal and paste **the same command** one last
    time. It checks everything and removes the helper account.
 
@@ -109,6 +109,7 @@ Add options at the end of the command, after `bash "$f"`.
 | "does not have admin rights" | Your account is not an admin on this computer. Contact your InfraSec team. |
 | Asked for a password after the command | It is **your login password** for the account you are logged in as. Nothing shows while typing. |
 | "UME Migration" is not on the login screen (Linux) | Click **Not listed?** and type `ume-migrate`. |
+| No Terminal window opened after logging in as UME Migration (or you closed it) | Open Terminal and paste the same command. Mac: you can also double-click **Continue UME migration** on the desktop. |
 | Forgot the helper password after run 1 | Log in to your own account (unchanged so far) and run the command with `--cancel`. Then start again. |
 | Your new name is not on the login screen | Login screens often show your full name. Pick that, or type the new name. |
 | "already exists" | Another account with your standard name exists already. Contact your InfraSec team. |
@@ -125,6 +126,12 @@ Add options at the end of the command, after `bash "$f"`.
 - **Temporary helper admin.** An OS will not rename an account that is logged in, and
   a user cannot safely rename themselves. Run 1 creates `ume-migrate`, run 2 (as that
   helper) renames, run 3 (as the renamed user) verifies and deletes the helper.
+- **Run 2 starts by itself.** Run 1 copies the script it is running to a root-owned file
+  in the state folder, plus a small launcher, and adds a login item to the helper's
+  (temporary) home: Linux `~/.config/autostart/` (the desktop's terminal), macOS a
+  LaunchAgent that opens the launcher in Terminal, plus a desktop shortcut. Same script
+  version as run 1, no second download. Run 3 and `--cancel` remove the copy; the login
+  item goes away with the helper account.
 - **Old path keeps working.** A symlink `old home → new home` covers any app or config
   that remembered the absolute path.
 - **Linux:** `usermod -l` / `-d -m`, `groupmod -n` for the private group, `/etc/subuid`

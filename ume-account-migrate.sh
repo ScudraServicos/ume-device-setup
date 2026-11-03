@@ -11,7 +11,8 @@
 #   Run 1   (as yourself)       creates a temporary helper admin account
 #                               "UME Migration" and asks you to log in to it.
 #   Run 2   (as UME Migration)  renames your account. Your files, apps and
-#                               password stay exactly the same.
+#                               password stay exactly the same. It opens by
+#                               itself in a Terminal window at that login.
 #   Run 3   (as your new name)  checks everything, removes the helper account.
 #
 # Usage (Terminal app, logged in as your normal account, no sudo):
@@ -39,7 +40,7 @@
 
 set -euo pipefail
 
-VERSION="2026.11.03.1"
+VERSION="2026.11.03.2"
 SOURCE_URL="https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v${VERSION}/ume-account-migrate.sh"
 RUN_CMD="f=\$(mktemp) && curl -fsSL ${SOURCE_URL} -o \"\$f\" && bash \"\$f\""
 TEMP_ADMIN="ume-migrate"
@@ -53,6 +54,9 @@ case "${OS}" in
   *) echo "Sorry, this computer type (${OS}) is not supported. Please contact your InfraSec team." >&2; exit 1 ;;
 esac
 STATE_FILE="${STATE_DIR}/state"
+# Root-owned copy of this script + launcher, started at the helper's login (run 2).
+RUN2_COPY="${STATE_DIR}/ume-account-migrate.sh"
+RUN2_LAUNCHER="${STATE_DIR}/run2.command"
 LOG_DIR="/var/log/ume-account-migrate"
 
 # ---------------------------------------------------------------------------
@@ -335,8 +339,8 @@ explain_plan() {
   say "What you will do (about 15 minutes):"
   say "  1. Now: this tool creates a temporary helper account called '${TEMP_ADMIN_FULLNAME}'."
   say "     You choose its password (you only need it today)."
-  say "  2. Log out, log in as '${TEMP_ADMIN_FULLNAME}', paste the same command again."
-  say "     That renames your account."
+  say "  2. Log out, log in as '${TEMP_ADMIN_FULLNAME}'. A Terminal window opens by itself"
+  say "     (if not, paste the same command again). That renames your account."
   say "  3. Log out, log in with your NEW name '${TARGET}' (same password as always),"
   say "     paste the same command one last time. It checks everything and removes"
   say "     the helper account."
@@ -398,6 +402,75 @@ create_temp_admin_macos() {
   user_exists "${TEMP_ADMIN}" || die "The temporary account was not created."
 }
 
+# Make run 2 start by itself when the helper logs in: a root-owned copy of this
+# exact script, a launcher that keeps the window open, and a login item in the
+# helper's (temporary) home. Best effort: pasting the command still works.
+install_run2_autostart() {
+  local home grp
+  home="$(home_of "${TEMP_ADMIN}")"; grp="$(id -gn "${TEMP_ADMIN}")"
+  [[ -n "${home}" ]] || return 1
+  install -m 0755 "${SCRIPT_PATH}" "${RUN2_COPY}" || return 1
+  cat > "${RUN2_LAUNCHER}" <<EOF || return 1
+#!/bin/bash
+# UME account migration, run 2: opened at the '${TEMP_ADMIN}' login.
+[ "\$(id -un)" = "${TEMP_ADMIN}" ] || exit 0
+bash "${RUN2_COPY}"
+echo
+read -r -p "Press Enter to close this window. " _
+EOF
+  chmod 0755 "${RUN2_LAUNCHER}" || return 1
+  undo_note "rm -f ${RUN2_COPY} ${RUN2_LAUNCHER}"
+
+  if [[ "${OS}" == "Darwin" ]]; then
+    [[ -d "${home}" ]] || createhomedir -c -u "${TEMP_ADMIN}" >> "${LOGFILE}" 2>&1 || return 1
+    install -d -o "${TEMP_ADMIN}" -g "${grp}" -m 0700 "${home}/Library" || return 1
+    install -d -o "${TEMP_ADMIN}" -g "${grp}" -m 0755 "${home}/Library/LaunchAgents" || return 1
+    cat > "${home}/Library/LaunchAgents/ume.account-migrate.plist" <<EOF || return 1
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ume.account-migrate</string>
+  <key>ProgramArguments</key>
+  <array><string>/usr/bin/open</string><string>-a</string><string>Terminal</string><string>${RUN2_LAUNCHER}</string></array>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+EOF
+    chown "${TEMP_ADMIN}:${grp}" "${home}/Library/LaunchAgents/ume.account-migrate.plist" || return 1
+    chmod 0644 "${home}/Library/LaunchAgents/ume.account-migrate.plist" || return 1
+    # Double-click fallback if the window was closed.
+    install -d -o "${TEMP_ADMIN}" -g "${grp}" -m 0700 "${home}/Desktop" || return 1
+    ln -sf "${RUN2_LAUNCHER}" "${home}/Desktop/Continue UME migration.command" || return 1
+  else
+    # Prefer the desktop's own terminal; else let the desktop pick one (Terminal=true).
+    local exec_line="" terminal=false t
+    for t in gnome-terminal ptyxis kgx konsole xfce4-terminal mate-terminal xterm; do
+      command -v "${t}" >/dev/null 2>&1 || continue
+      case "${t}" in
+        gnome-terminal|ptyxis|kgx) exec_line="${t} -- /bin/bash ${RUN2_LAUNCHER}" ;;
+        xfce4-terminal|mate-terminal) exec_line="${t} -x /bin/bash ${RUN2_LAUNCHER}" ;;
+        *) exec_line="${t} -e /bin/bash ${RUN2_LAUNCHER}" ;;
+      esac
+      break
+    done
+    if [[ -z "${exec_line}" ]]; then exec_line="/bin/bash ${RUN2_LAUNCHER}"; terminal=true; fi
+    install -d -o "${TEMP_ADMIN}" -g "${grp}" -m 0700 "${home}/.config/autostart" || return 1
+    cat > "${home}/.config/autostart/ume-account-migrate.desktop" <<EOF || return 1
+[Desktop Entry]
+Type=Application
+Name=UME account migration
+Exec=${exec_line}
+Terminal=${terminal}
+X-GNOME-Autostart-enabled=true
+EOF
+    chown "${TEMP_ADMIN}:${grp}" "${home}/.config/autostart/ume-account-migrate.desktop" || return 1
+  fi
+  log "run 2 autostart installed for ${TEMP_ADMIN}"
+}
+
+remove_run2_copy() { rm -f "${RUN2_COPY}" "${RUN2_LAUNCHER}"; }
+
 run1() {
   explain_plan
   if ! confirm_yes "Ready to start?"; then
@@ -410,6 +483,11 @@ run1() {
   title "Run 1 of 3 - creating the temporary helper account"
   if [[ "${OS}" == "Darwin" ]]; then create_temp_admin_macos; else create_temp_admin_linux; fi
   ok "Temporary account '${TEMP_ADMIN_FULLNAME}' created."
+  mkdir -p "${STATE_DIR}"; chmod 755 "${STATE_DIR}"
+  if ! install_run2_autostart; then
+    log "WARN: could not set up the run 2 autostart"
+    warn "Could not set up the automatic start; you will paste the command yourself in run 2."
+  fi
 
   S_PHASE=1
   S_OLD_USER="${CUR_USER}"
@@ -426,7 +504,8 @@ run1() {
            "3. On the login screen choose '${TEMP_ADMIN_FULLNAME}' and use the password you just chose." \
            "   (Linux: if it is not listed, click 'Not listed?' and type ${TEMP_ADMIN})" \
            "   If welcome/setup screens appear, skip them all (Skip / Set Up Later)." \
-           "4. Open Terminal: ${HOW_TERMINAL}" \
+           "4. A Terminal window opens by itself and continues. Follow it." \
+           "   If it does not open: ${HOW_TERMINAL}" \
            "${SAME_CMD_1}" "${SAME_CMD_2}" \
            "   ${FIND_AGAIN}" \
            "" \
@@ -442,6 +521,7 @@ cancel_run1() {
     pgrep -u "${TEMP_ADMIN}" >/dev/null 2>&1 && die "'${TEMP_ADMIN_FULLNAME}' is still logged in. Log it out first."
     if [[ "${OS}" == "Darwin" ]]; then run sysadminctl -deleteUser "${TEMP_ADMIN}"; else run userdel -r "${TEMP_ADMIN}"; fi
   fi
+  remove_run2_copy
   rm -f "${STATE_FILE}"
   log "cancelled; state cleared"
   ok "Cancelled. The helper account was removed; your account was not changed."
@@ -639,6 +719,7 @@ run3() {
       log "deleted ${TEMP_ADMIN}"
     fi
   fi
+  remove_run2_copy
   rm -f "${STATE_FILE}"
   log "run3: done, state cleared"
   ok "Migration finished."

@@ -43,7 +43,7 @@ if the login name equals the part of their UME email before `@`
    never changes anything):
 
    ```bash
-   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f" --check --email <email>
+   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/ume-account-migrate.sh -o "$f" && bash "$f" --check --email <email>
    ```
 
 ## Explain (only when a change is needed)
@@ -58,7 +58,8 @@ Say, in your own words and in plain language:
 - You will paste **the same command 3 times**, in 3 different logins:
   1. **Your account now.** It creates a temporary helper account called
      **UME Migration**; you choose its password (only needed today).
-  2. **As UME Migration.** It renames your account.
+  2. **As UME Migration.** A Terminal window opens by itself and renames your account
+     (if it does not open, paste the same command).
   3. **As your new name**, with your usual password. It checks everything and removes
      the helper account.
 - How to do the desktop steps (tell them when they reach each one):
@@ -75,12 +76,12 @@ Ask: "Ready to start?" Only then give the command.
 Ask the person to open **Terminal**, paste this, and press Enter:
 
 ```bash
-f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f"
+f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.2/ume-account-migrate.sh -o "$f" && bash "$f"
 ```
 
 Tell them to **save this command somewhere they can reach after logging out**
 (for example a note on their phone, or this chat on their phone), because they need it
-in all 3 runs. It is also always on the public page
+again in run 3 (run 2 normally opens by itself). It is also always on the public page
 https://github.com/ScudraServicos/ume-device-setup (no login needed).
 
 What they will see:
@@ -100,6 +101,7 @@ opening the assistant again) and say which run they are on.
 | "does not have admin rights" | Their account is not an admin. Contact the InfraSec team. |
 | Password is rejected | It is the login password of the account they are in now (in run 2: the UME Migration password they chose). |
 | UME Migration is not on the login screen (Linux) | Click **Not listed?** and type `ume-migrate`. |
+| No Terminal window opened in UME Migration (or they closed it) | Open Terminal and paste the same command. Mac: or double-click **Continue UME migration** on the desktop. |
 | Forgot the UME Migration password (after run 1) | Log in to their own account (not changed yet) and paste the command with ` --cancel` at the end. Then start again. |
 | New name is not on the login screen | Login screens often show the full name; pick that or type the new name. Password is the usual one. |
 | "already exists" | Another account with the standard name exists. Contact the InfraSec team. Do not try to fix it. |
