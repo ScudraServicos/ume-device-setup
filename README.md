@@ -15,7 +15,7 @@ Copy this sentence and paste it into **Claude** (Desktop app, claude.ai or Claud
 or **Hermes**:
 
 ```text
-Read https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md and follow it step by step to prepare my computer for JumpCloud.
+Read https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md and follow it step by step to prepare my computer for JumpCloud.
 ```
 
 That's it. The assistant checks your computer, explains everything in plain language and
@@ -28,8 +28,8 @@ passwords: you only type those into Terminal.
 | Assistant | Install the skill once |
 |---|---|
 | Claude Desktop / claude.ai | Download [`ume-account-migrate-skill.zip`](https://github.com/ScudraServicos/ume-device-setup/releases/latest), then **Settings → Capabilities → Skills → Upload skill** and pick the zip. |
-| Claude Code | Paste in Terminal: `mkdir -p ~/.claude/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md -o ~/.claude/skills/ume-account-migrate/SKILL.md` |
-| Hermes Agent | Paste in Terminal: `mkdir -p ~/.hermes/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md -o ~/.hermes/skills/ume-account-migrate/SKILL.md` |
+| Claude Code | Paste in Terminal: `mkdir -p ~/.claude/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md -o ~/.claude/skills/ume-account-migrate/SKILL.md` |
+| Hermes Agent | Paste in Terminal: `mkdir -p ~/.hermes/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/skills/ume-account-migrate/SKILL.md -o ~/.hermes/skills/ume-account-migrate/SKILL.md` |
 
 No assistant? Follow the steps below yourself: it is the same flow.
 
@@ -53,7 +53,7 @@ login password.
 2. Open the **Terminal** app and paste this command, then press Enter:
 
    ```bash
-   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/ume-account-migrate.sh -o "$f" && bash "$f"
+   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f"
    ```
 
 3. Type your UME work email when asked. The tool checks your computer:

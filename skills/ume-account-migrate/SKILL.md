@@ -43,7 +43,7 @@ if the login name equals the part of their UME email before `@`
    never changes anything):
 
    ```bash
-   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/ume-account-migrate.sh -o "$f" && bash "$f" --check --email <email>
+   f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f" --check --email <email>
    ```
 
 ## Explain (only when a change is needed)
@@ -75,7 +75,7 @@ Ask: "Ready to start?" Only then give the command.
 Ask the person to open **Terminal**, paste this, and press Enter:
 
 ```bash
-f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/ume-account-migrate.sh -o "$f" && bash "$f"
+f=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03.1/ume-account-migrate.sh -o "$f" && bash "$f"
 ```
 
 Tell them to **save this command somewhere they can reach after logging out**
