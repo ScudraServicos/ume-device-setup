@@ -37,8 +37,10 @@ OLD_UID="$(id -u jsilva)"
 cat > /tmp/drive.exp <<'EXP'
 set timeout 60
 set user [lindex $argv 0]; set pass [lindex $argv 1]; set args [lrange $argv 2 end]
-spawn su -P - $user -c "bash /opt/m.sh $args"
+set script /opt/m.sh; if {[info exists env(SCRIPT)]} { set script $env(SCRIPT) }
+spawn su -P - $user -c "bash $script $args"
 expect {
+  -re {Press Enter to close this window\. $}  { send "\r"; exp_continue }
   -re {\[sudo\] password for [^:]+: $}           { send "$pass\r"; exp_continue }
   -re {UME work email.*: $}             { send "joao.silva@example.com\r"; exp_continue }
   -re {Type .*yes.* to continue: $}     { send "yes\r"; exp_continue }
@@ -63,15 +65,26 @@ drive jsilva Old-pass-123 || fail "run 1 exit code"
 id ume-migrate >/dev/null || fail "helper not created"
 [[ "$(cat /home/ume-migrate/.config/gnome-initial-setup-done)" == yes ]] || fail "GNOME welcome wizard not skipped for helper"
 grep -q '^PHASE=1$' /var/lib/ume-account-migrate/state || fail "state not phase 1"
+SD=/var/lib/ume-account-migrate; AUTO=/home/ume-migrate/.config/autostart/ume-account-migrate.desktop
+[[ "$(stat -c '%U %a' "${SD}/ume-account-migrate.sh")" == "root 755" ]] || fail "script copy not root-owned 0755"
+[[ "$(sha256sum < "${SD}/ume-account-migrate.sh")" == "$(sha256sum < /opt/m.sh)" ]] || fail "script copy differs"
+[[ "$(stat -c '%U %a' "${SD}/run2.command")" == "root 755" ]] || fail "launcher not root-owned 0755"
+[[ "$(stat -c '%U' "${AUTO}")" == ume-migrate ]] || fail "autostart entry missing or wrong owner"
+grep -q "^Exec=.*/bin/bash ${SD}/run2.command$" "${AUTO}" || fail "autostart Exec wrong"
 pass "run 1"
 
 echo "### run 1 again as jsilva -> only a reminder"
 drive jsilva Old-pass-123 | grep -q "Run 1 is already done" || fail "no reminder"
 pass "idempotent reminder"
 
-echo "### leave a background process for jsilva, then run 2 as ume-migrate"
+echo "### the launcher does nothing for other users"
+out="$(su - jsilva -c "bash ${SD}/run2.command" 2>&1)" || fail "launcher exit code for other user"
+[[ -z "${out}" ]] || fail "launcher ran for another user"
+pass "launcher guard"
+
+echo "### leave a background process for jsilva, then run 2 as ume-migrate via its login launcher"
 su - jsilva -c 'nohup sleep 1000 >/dev/null 2>&1 &'
-drive ume-migrate Temp-pass-456 || fail "run 2 exit code"
+SCRIPT="${SD}/run2.command" expect -f /tmp/drive.exp ume-migrate Temp-pass-456 || fail "run 2 exit code"
 id joao.silva >/dev/null || fail "new user missing"
 id jsilva >/dev/null 2>&1 && fail "old user still exists"
 [[ "$(id -u joao.silva)" == "${OLD_UID}" ]] || fail "UID changed"
@@ -95,6 +108,7 @@ echo "${out}" | grep -q "Device Enrollment" || fail "run 3 did not show JumpClou
 echo "${out}" | grep -q "TAKE OVER an existing account, accept: it must be 'joao.silva'" || fail "run 3 takeover name"
 id ume-migrate >/dev/null 2>&1 && fail "helper not removed"
 [[ -e /var/lib/ume-account-migrate/state ]] && fail "state not cleared"
+[[ -e "${SD}/ume-account-migrate.sh" || -e "${SD}/run2.command" ]] && fail "script copy/launcher not removed"
 pass "run 3"
 
 echo "### check again -> all good"
@@ -110,6 +124,7 @@ drive msouza Pw-789 || fail "cancel: run 1"
 drive msouza Pw-789 --cancel || fail "cancel exit code"
 id ume-migrate >/dev/null 2>&1 && fail "cancel left helper"
 [[ -e /var/lib/ume-account-migrate/state ]] && fail "cancel left state"
+[[ -e "${SD}/ume-account-migrate.sh" || -e "${SD}/run2.command" ]] && fail "cancel left script copy/launcher"
 id msouza >/dev/null || fail "cancel touched user"
 pass "--cancel"
 
