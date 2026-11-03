@@ -40,7 +40,7 @@
 
 set -euo pipefail
 
-VERSION="2026.11.03.1"
+VERSION="2026.11.03.2"
 SOURCE_URL="https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v${VERSION}/ume-account-migrate.sh"
 RUN_CMD="f=\$(mktemp) && curl -fsSL ${SOURCE_URL} -o \"\$f\" && bash \"\$f\""
 TEMP_ADMIN="ume-migrate"
