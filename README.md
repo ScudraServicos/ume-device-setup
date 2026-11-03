@@ -9,6 +9,32 @@ Small, public tools that help UME people prepare their own computer.
 
 ---
 
+## Easiest: ask your AI assistant
+
+Copy this sentence and paste it into **Claude** (Desktop app, claude.ai or Claude Code)
+or **Hermes**:
+
+```text
+Read https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md and follow it step by step to prepare my computer for JumpCloud.
+```
+
+That's it. The assistant checks your computer, explains everything in plain language and
+tells you exactly what to paste in Terminal, one step at a time. It never asks for your
+passwords: you only type those into Terminal.
+
+**Want it installed for next time?** (optional) Afterwards, just say
+*"prepare my computer for JumpCloud"*.
+
+| Assistant | Install the skill once |
+|---|---|
+| Claude Desktop / claude.ai | Download [`ume-account-migrate-skill.zip`](https://github.com/ScudraServicos/ume-device-setup/releases/latest), then **Settings → Capabilities → Skills → Upload skill** and pick the zip. |
+| Claude Code | Paste in Terminal: `mkdir -p ~/.claude/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md -o ~/.claude/skills/ume-account-migrate/SKILL.md` |
+| Hermes Agent | Paste in Terminal: `mkdir -p ~/.hermes/skills/ume-account-migrate && curl -fsSL https://raw.githubusercontent.com/ScudraServicos/ume-device-setup/v2026.11.03/skills/ume-account-migrate/SKILL.md -o ~/.hermes/skills/ume-account-migrate/SKILL.md` |
+
+No assistant? Follow the steps below yourself: it is the same flow.
+
+---
+
 ## Rename my computer login (for everyone)
 
 **Why:** JumpCloud only takes over your current account if your login name is
